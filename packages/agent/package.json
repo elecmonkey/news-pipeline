@@ -1,0 +1,25 @@
+{
+  "name": "@news-pipeline/agent",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "bun src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@news-pipeline/database": "workspace:*",
+    "fast-xml-parser": "^5.3.3",
+    "he": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/he": "^1.2.3",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@10.27.0"
+}

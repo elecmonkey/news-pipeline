@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../dist/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model GenerationRun {
+  id          String   @id @default(uuid()) @db.Uuid
+  windowStart DateTime @db.Timestamptz(6)
+  windowEnd   DateTime @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  events      Event[]
+}
+
+model Article {
+  id          String            @id @default(uuid()) @db.Uuid
+  source      String
+  title       String
+  content     String            @db.Text
+  link        String            @unique
+  publishedAt DateTime?         @db.Timestamptz(6)
+  createdAt   DateTime          @default(now()) @db.Timestamptz(6)
+  events      EventArticleLink[]
+}
+
+model Event {
+  id              String            @id @default(uuid()) @db.Uuid
+  generationRunId String            @db.Uuid
+  title           String
+  summary         String            @db.Text
+  references      Json?
+  createdAt       DateTime          @default(now()) @db.Timestamptz(6)
+  generationRun   GenerationRun     @relation(fields: [generationRunId], references: [id])
+  articles        EventArticleLink[]
+}
+
+model EventArticleLink {
+  eventId   String @db.Uuid
+  articleId String @db.Uuid
+
+  event   Event   @relation(fields: [eventId], references: [id])
+  article Article @relation(fields: [articleId], references: [id])
+
+  @@id([eventId, articleId])
+}
