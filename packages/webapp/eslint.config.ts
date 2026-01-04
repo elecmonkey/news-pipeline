@@ -40,6 +40,8 @@ export default [
       },
       globals: {
         ...globals.browser,
+        useFetch: "readonly",
+        $fetch: "readonly",
       },
     },
   },
