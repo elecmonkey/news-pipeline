@@ -1,5 +1,17 @@
 {
   "name": "@news-pipeline/webapp",
+  "version": "1.0.0",
+  "description": "Web application for News Pipeline",
+  "keywords": [
+    "nuxt",
+    "vue",
+    "vuetify",
+    "dashboard",
+    "frontend",
+    "news-ui"
+  ],
+  "author": "Elecmonkey <elecmonkey@hotmail.com> (https://www.elecmonkey.com)",
+  "license": "MIT",
   "type": "module",
   "private": true,
   "scripts": {

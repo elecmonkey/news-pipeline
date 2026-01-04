@@ -1,7 +1,7 @@
 {
   "name": "@news-pipeline/database",
   "version": "1.0.0",
-  "description": "",
+  "description": "Database layer for News Pipeline",
   "type": "module",
   "private": true,
   "main": "dist/index.js",
@@ -20,8 +20,14 @@
     "db:studio": "prisma studio",
     "db:truncate": "prisma db execute --file prisma/truncate.sql"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "database",
+    "prisma",
+    "postgresql",
+    "orm",
+    "persistence"
+  ],
+  "author": "Elecmonkey <elecmonkey@hotmail.com> (https://www.elecmonkey.com)",
   "license": "MIT",
   "dependencies": {
     "@prisma/adapter-pg": "^7.2.0",

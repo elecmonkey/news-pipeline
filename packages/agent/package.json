@@ -1,7 +1,7 @@
 {
   "name": "@news-pipeline/agent",
   "version": "1.0.0",
-  "description": "",
+  "description": "News Pipeline Agent for fetching and processing news",
   "type": "module",
   "private": true,
   "main": "dist/index.js",
@@ -9,8 +9,14 @@
     "dev": "bun src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "news-agent",
+    "llm",
+    "rss-parser",
+    "ai-agent",
+    "content-normalization"
+  ],
+  "author": "Elecmonkey <elecmonkey@hotmail.com> (https://www.elecmonkey.com)",
   "license": "MIT",
   "dependencies": {
     "@news-pipeline/database": "workspace:*",
