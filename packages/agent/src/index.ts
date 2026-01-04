@@ -3,7 +3,7 @@ import { dedupeByLink } from "./pipeline/dedupe";
 import { ingestSources } from "./pipeline/ingest";
 import { createChatCompletion, loadOpenAIConfig } from "./llm/openai";
 import { eventsSystemPrompt, eventsUserPrompt } from "./llm/prompts/events";
-import { summarySystemPrompt, summaryUserPrompt } from "./llm/prompts/summary";
+import { buildSummarySystemPrompt, summaryUserPrompt } from "./llm/prompts/summary";
 import type { NormalizedArticle } from "./core/types";
 import { upsertArticles } from "./store/db";
 
@@ -19,6 +19,8 @@ type EventsResponse = {
 
 async function main() {
   const config = loadOpenAIConfig();
+  const localLanguage = process.env.LOCAL_LANGUAGE?.trim() || undefined;
+  const summarySystemPrompt = buildSummarySystemPrompt(localLanguage);
   console.log("[run] starting ingest");
   const ingested = await ingestSources();
   const windowMinutes = parseWindowMinutes(process.env.WINDOW_MINUTES);
