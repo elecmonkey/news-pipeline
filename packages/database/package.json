@@ -17,7 +17,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:truncate": "prisma db execute --file prisma/truncate.sql"
   },
   "keywords": [],
   "author": "",
