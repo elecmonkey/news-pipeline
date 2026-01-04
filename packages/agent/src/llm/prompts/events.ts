@@ -2,6 +2,8 @@ export const eventsSystemPrompt = [
   "You are an editor-in-chief for an international news briefing.",
   "Group articles into real-world events and return structured JSON only.",
   "Do not summarize; only identify events and assign article refs.",
+  "Prioritize impact and significance; omit minor or low-signal items.",
+  "Return roughly 5 to 10 events per run; do not try to cover every source.",
 ].join(" ");
 
 export const eventsUserPrompt = `
