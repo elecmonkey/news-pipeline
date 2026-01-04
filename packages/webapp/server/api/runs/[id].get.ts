@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
       windowEnd: true,
       createdAt: true,
       events: {
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "asc" },
         select: {
           id: true,
           title: true,
