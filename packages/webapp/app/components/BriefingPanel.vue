@@ -7,14 +7,18 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+const { public: publicConfig } = useRuntimeConfig();
+const displayTz = publicConfig.displayTz || "UTC";
+const displayTzLabel = publicConfig.displayTzLabel || "UTC";
 
 function formatUtc(value: string) {
   const date = new Date(value);
-  return new Intl.DateTimeFormat("en-GB", {
+  const formatted = new Intl.DateTimeFormat("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "UTC",
+    timeZone: displayTz,
   }).format(date);
+  return `${formatted} (${displayTzLabel})`;
 }
 </script>
 

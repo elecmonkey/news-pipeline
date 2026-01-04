@@ -12,6 +12,12 @@ export default defineNuxtConfig({
       title: "News Pipeline",
     },
   },
+  runtimeConfig: {
+    public: {
+      displayTz: process.env.DISPLAY_TZ || "UTC",
+      displayTzLabel: process.env.DISPLAY_TZ_LABEL || "UTC",
+    },
+  },
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   devServer: {

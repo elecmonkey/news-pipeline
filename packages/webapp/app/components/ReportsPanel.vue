@@ -11,6 +11,9 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+const { public: publicConfig } = useRuntimeConfig();
+const displayTz = publicConfig.displayTz || "UTC";
+const displayTzLabel = publicConfig.displayTzLabel || "UTC";
 const emit = defineEmits<{
   (event: "select", id: string): void;
   (event: "update:page", value: number): void;
@@ -19,11 +22,12 @@ const emit = defineEmits<{
 
 function formatUtc(value: string) {
   const date = new Date(value);
-  return new Intl.DateTimeFormat("en-GB", {
+  const formatted = new Intl.DateTimeFormat("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "UTC",
+    timeZone: displayTz,
   }).format(date);
+  return `${formatted} (${displayTzLabel})`;
 }
 
 function selectRun(id: string) {
