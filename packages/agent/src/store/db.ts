@@ -16,31 +16,31 @@ export async function upsertArticles(
 ): Promise<StoredArticle[]> {
   if (!articles.length) return [];
 
-  const records = await prisma.$transaction(
-    articles.map((article) =>
-      prisma.article.upsert({
-        where: { link: article.link },
-        create: {
-          source: article.source,
-          title: article.title,
-          content: article.summary || article.title,
-          link: article.link,
-          publishedAt: article.publishedAt ?? undefined,
-        },
-        update: {
-          title: article.title,
-          content: article.summary || article.title,
-          publishedAt: article.publishedAt ?? undefined,
-        },
-        select: {
-          id: true,
-          link: true,
-          title: true,
-          source: true,
-        },
-      })
-    )
-  );
+  const records: StoredArticle[] = [];
+  for (const article of articles) {
+    const record = await prisma.article.upsert({
+      where: { link: article.link },
+      create: {
+        source: article.source,
+        title: article.title,
+        content: article.summary || article.title,
+        link: article.link,
+        publishedAt: article.publishedAt ?? undefined,
+      },
+      update: {
+        title: article.title,
+        content: article.summary || article.title,
+        publishedAt: article.publishedAt ?? undefined,
+      },
+      select: {
+        id: true,
+        link: true,
+        title: true,
+        source: true,
+      },
+    });
+    records.push(record);
+  }
 
   return records;
 }
