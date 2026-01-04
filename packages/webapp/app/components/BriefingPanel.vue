@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RunDetail } from "../types/news";
+import type { EventReference, RunDetail } from "../types/news";
 
 type Props = {
   runDetail: RunDetail | null;
@@ -19,6 +19,11 @@ function formatUtc(value: string) {
     timeZone: displayTz,
   }).format(date);
   return `${formatted} (${displayTzLabel})`;
+}
+
+function formatReferenceSubtitle(reference: EventReference) {
+  if (!reference.publishedAt) return reference.source;
+  return `${formatUtc(reference.publishedAt)} · ${reference.source}`;
 }
 </script>
 
@@ -97,7 +102,7 @@ function formatUtc(value: string) {
                   {{ reference.title }}
                 </v-list-item-title>
                 <v-list-item-subtitle>
-                  {{ reference.source }}
+                  {{ formatReferenceSubtitle(reference) }}
                 </v-list-item-subtitle>
                 <template #append>
                   <v-icon

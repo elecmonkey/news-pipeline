@@ -4,6 +4,7 @@ type ReferenceItem = {
   source: string;
   title: string;
   link: string;
+  publishedAt?: string | null;
 };
 
 export default defineEventHandler(async (event) => {
@@ -76,11 +77,15 @@ export default defineEventHandler(async (event) => {
 
   const events = run.events.map((eventItem) => {
     const refs = Array.isArray(eventItem.references)
-      ? (eventItem.references as ReferenceItem[])
+      ? (eventItem.references as ReferenceItem[]).map((reference) => ({
+          ...reference,
+          publishedAt: reference.publishedAt ?? null,
+        }))
       : eventItem.articles.map((link) => ({
           source: link.article.source,
           title: link.article.title,
           link: link.article.link,
+          publishedAt: link.article.publishedAt?.toISOString() ?? null,
         }));
 
     return {

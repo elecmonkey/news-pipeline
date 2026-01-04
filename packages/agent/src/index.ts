@@ -109,6 +109,7 @@ async function main() {
       source: article.source,
       title: article.title,
       link: article.link,
+      publishedAt: article.publishedAt?.toISOString() ?? null,
     }));
 
     const createdEvent = await prisma.event.create({
