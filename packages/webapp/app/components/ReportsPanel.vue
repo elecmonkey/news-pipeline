@@ -72,6 +72,7 @@ function selectRun(id: string) {
       <v-list
         v-else
         density="compact"
+        class="report-list"
       >
         <v-list-item
           v-for="(run, idx) in props.runs"
@@ -141,5 +142,13 @@ function selectRun(id: string) {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.report-list :deep(.v-list-item__spacer) {
+  width: 4px;
+}
+
+.report-list :deep(.v-list-item__prepend) {
+  margin-inline-end: 4px;
 }
 </style>

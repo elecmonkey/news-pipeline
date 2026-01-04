@@ -82,8 +82,8 @@ function selectRun(id: string) {
     <v-row>
       <v-col
         cols="12"
-        md="4"
-        lg="3"
+        md="5"
+        lg="4"
       >
         <ReportsPanel
           :runs="runsData?.runs ?? []"
@@ -100,8 +100,8 @@ function selectRun(id: string) {
 
       <v-col
         cols="12"
-        md="8"
-        lg="9"
+        md="7"
+        lg="8"
       >
         <BriefingPanel
           :run-detail="runDetail"
@@ -114,7 +114,7 @@ function selectRun(id: string) {
 
 <style scoped>
 .page-grid {
-  max-width: 1280px;
+  max-width: 1440px;
 }
 
 @media (max-width: 960px) {
