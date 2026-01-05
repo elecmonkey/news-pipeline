@@ -55,7 +55,7 @@ async function main() {
     .map((article) =>
       [
         `[${article.ref}] ${article.title}`,
-        pickArticleContext(article),
+        pickGroupingContext(article),
         article.link,
       ].join("\n")
     )
@@ -91,7 +91,7 @@ async function main() {
       .map((article) =>
         [
           `Title: ${article.title}`,
-          `Summary: ${pickArticleContext(article, 4000)}`,
+          `Summary: ${pickSummaryContext(article, 4000)}`,
           `Link: ${article.link}`,
         ].join("\n")
       )
@@ -172,7 +172,11 @@ function pickArticleOutput(article: NormalizedArticle & { ref: string }) {
   };
 }
 
-function pickArticleContext(
+function pickGroupingContext(article: NormalizedArticle): string {
+  return article.summary || article.title;
+}
+
+function pickSummaryContext(
   article: NormalizedArticle,
   maxLength = 1200
 ): string {

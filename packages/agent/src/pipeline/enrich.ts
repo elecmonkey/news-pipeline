@@ -19,11 +19,17 @@ export async function enrichArticles(
         const index = cursor++;
         if (index >= articles.length) break;
         const article = articles[index];
+        const label = `${index + 1}/${articles.length} ${article.source} ${trimTitle(article.title)}`;
         if (article.content) {
+          console.log(`[content] ${label} skipped (already has content)`);
           results[index] = article;
           continue;
         }
+        console.log(`[content] ${label} fetching`);
         const extracted = await fetchArticleText(article.link);
+        console.log(
+          `[content] ${label} ${extracted?.text ? "ok" : "fallback"}`
+        );
         results[index] = {
           ...article,
           // If extraction fails (e.g. paywalled/JS-rendered pages), fall back to RSS summary.
@@ -35,4 +41,9 @@ export async function enrichArticles(
 
   await Promise.all(workers);
   return results;
+}
+
+function trimTitle(title: string, maxLength = 72): string {
+  if (title.length <= maxLength) return title;
+  return `${title.slice(0, maxLength)}…`;
 }

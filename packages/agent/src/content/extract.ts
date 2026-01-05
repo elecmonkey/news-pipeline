@@ -1,5 +1,5 @@
 import { Readability } from "@mozilla/readability";
-import { JSDOM } from "jsdom";
+import { JSDOM, VirtualConsole } from "jsdom";
 
 const DEFAULT_TIMEOUT_MS = 15000;
 const DEFAULT_MIN_TEXT = 200;
@@ -28,7 +28,12 @@ export async function fetchArticleText(
       return null;
     }
     const html = await response.text();
-    const dom = new JSDOM(html, { url });
+    const virtualConsole = new VirtualConsole();
+    virtualConsole.on("jsdomError", (error) => {
+      if (error.message.includes("Could not parse CSS stylesheet")) return;
+      console.warn("[content] jsdom", error.message);
+    });
+    const dom = new JSDOM(html, { url, virtualConsole });
     const reader = new Readability(dom.window.document);
     const parsed = reader.parse();
     if (!parsed?.textContent) return null;
