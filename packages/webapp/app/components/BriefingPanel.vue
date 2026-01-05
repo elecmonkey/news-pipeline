@@ -10,6 +10,8 @@ const props = defineProps<Props>();
 const { public: publicConfig } = useRuntimeConfig();
 const displayTz = publicConfig.displayTz || "UTC";
 const displayTzLabel = publicConfig.displayTzLabel || "UTC";
+const isReferenceOpen = ref(false);
+const selectedReference = ref<EventReference | null>(null);
 
 function formatUtc(value: string) {
   const date = new Date(value);
@@ -23,7 +25,17 @@ function formatUtc(value: string) {
 
 function formatReferenceSubtitle(reference: EventReference) {
   if (!reference.publishedAt) return reference.source;
-  return `${formatUtc(reference.publishedAt)} · ${reference.source}`;
+  return `${reference.source} · ${formatUtc(reference.publishedAt)}`;
+}
+
+function openReference(reference: EventReference) {
+  selectedReference.value = reference;
+  isReferenceOpen.value = true;
+}
+
+function closeReference() {
+  isReferenceOpen.value = false;
+  selectedReference.value = null;
 }
 </script>
 
@@ -77,7 +89,6 @@ function formatReferenceSubtitle(reference: EventReference) {
                 {{ event.title }}
               </div>
               <div class="text-caption text-medium-emphasis">
-                {{ formatUtc(event.createdAt) }} ·
                 {{ event.references.length }} sources
               </div>
             </div>
@@ -94,9 +105,7 @@ function formatReferenceSubtitle(reference: EventReference) {
               <v-list-item
                 v-for="reference in event.references"
                 :key="reference.link"
-                :href="reference.link"
-                target="_blank"
-                rel="noopener noreferrer"
+                @click="openReference(reference)"
               >
                 <v-list-item-title class="headline-font">
                   {{ reference.title }}
@@ -104,17 +113,59 @@ function formatReferenceSubtitle(reference: EventReference) {
                 <v-list-item-subtitle>
                   {{ formatReferenceSubtitle(reference) }}
                 </v-list-item-subtitle>
-                <template #append>
-                  <v-icon
-                    icon="mdi-open-in-new"
-                    size="16"
-                  />
-                </template>
               </v-list-item>
             </v-list>
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
+      <v-dialog
+        v-model="isReferenceOpen"
+        width="800"
+        @click:outside="closeReference"
+      >
+        <v-card>
+          <v-card-title class="headline-font">
+            {{ selectedReference?.title || "Source" }}
+          </v-card-title>
+          <v-card-subtitle>
+            {{ selectedReference ? formatReferenceSubtitle(selectedReference) : "" }}
+          </v-card-subtitle>
+          <v-card-text class="reference-body">
+            <div v-if="selectedReference?.content">
+              {{ selectedReference.content }}
+            </div>
+            <div
+              v-else
+              class="text-medium-emphasis"
+            >
+              No content captured for this source.
+            </div>
+          </v-card-text>
+          <v-card-actions>
+            <v-btn
+              v-if="selectedReference?.link"
+              :href="selectedReference.link"
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="tonal"
+            >
+              Open original
+              <v-icon
+                icon="mdi-open-in-new"
+                size="16"
+                class="ml-2"
+              />
+            </v-btn>
+            <v-spacer />
+            <v-btn
+              variant="text"
+              @click="closeReference"
+            >
+              Close
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </v-card-text>
   </v-card>
 </template>
@@ -160,6 +211,12 @@ function formatReferenceSubtitle(reference: EventReference) {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.reference-body {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 @media (max-width: 960px) {

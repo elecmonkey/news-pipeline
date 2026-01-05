@@ -19,6 +19,7 @@ export type EventReference = {
   title: string;
   link: string;
   publishedAt: string | null;
+  content: string | null;
 };
 
 export type RunEvent = {
