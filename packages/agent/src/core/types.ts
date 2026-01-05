@@ -1,4 +1,10 @@
-export type SourceId = "aljazeera" | "bbc" | "nyt" | "guardian";
+export type SourceId =
+  | "aljazeera"
+  | "bbc"
+  | "nyt"
+  | "guardian"
+  | "unNews"
+  | "scmp";
 
 export type NormalizedArticle = {
   source: SourceId;
