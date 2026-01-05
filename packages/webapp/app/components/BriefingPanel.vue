@@ -123,7 +123,7 @@ function closeReference() {
         width="800"
         @click:outside="closeReference"
       >
-        <v-card>
+        <v-card class="reference-modal">
           <v-card-title class="headline-font">
             {{ selectedReference?.title || "Source" }}
           </v-card-title>
@@ -217,6 +217,27 @@ function closeReference() {
   font-size: 0.95rem;
   line-height: 1.7;
   white-space: pre-wrap;
+}
+
+.reference-modal :deep(.v-card-title),
+.reference-modal :deep(.v-card-subtitle),
+.reference-modal :deep(.v-card-text),
+.reference-modal :deep(.v-card-actions) {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.reference-modal :deep(.v-card-title) {
+  padding-top: 20px;
+}
+
+.reference-modal :deep(.v-card-text) {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.reference-modal :deep(.v-card-actions) {
+  padding-bottom: 20px;
 }
 
 @media (max-width: 960px) {
