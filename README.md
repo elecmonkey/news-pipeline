@@ -75,7 +75,8 @@ See `.env.example` for all options. Common ones:
 - `OPENAI_BASE_URL` / `OPENAI_MODEL` / `OPENAI_API_KEY` — LLM provider settings.
 - `WINDOW_MINUTES` — ingest window size.
 - `LOCAL_LANGUAGE` — summarization language hint.
-- `DISPLAY_TZ` / `DISPLAY_TZ_LABEL` — UI time zone display.
+- `DISPLAY_TZ` — UI time zone (IANA name) used for formatting.
+- `DISPLAY_TZ_LABEL` — optional label appended in parentheses; leave empty/undefined to omit.
 - `CONTENT_FETCH_CONCURRENCY` — content extraction concurrency.
 
 ## Notes

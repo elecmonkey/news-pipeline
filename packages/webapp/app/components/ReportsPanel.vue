@@ -14,7 +14,7 @@ type Props = {
 const props = defineProps<Props>();
 const { public: publicConfig } = useRuntimeConfig();
 const displayTz = publicConfig.displayTz || "UTC";
-const displayTzLabel = publicConfig.displayTzLabel || "UTC";
+const displayTzLabel = String(publicConfig.displayTzLabel ?? "").trim();
 const emit = defineEmits<{
   (event: "select", id: string): void;
   (event: "update:page", value: number): void;
@@ -28,7 +28,7 @@ function formatUtc(value: string) {
     timeStyle: "short",
     timeZone: displayTz,
   }).format(date);
-  return `${formatted} (${displayTzLabel})`;
+  return displayTzLabel ? `${formatted} (${displayTzLabel})` : formatted;
 }
 
 function selectRun(id: string) {

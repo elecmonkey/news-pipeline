@@ -15,7 +15,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       displayTz: process.env.DISPLAY_TZ || "UTC",
-      displayTzLabel: process.env.DISPLAY_TZ_LABEL || "UTC",
+      displayTzLabel: process.env.DISPLAY_TZ_LABEL ?? "",
     },
   },
   compatibilityDate: '2025-07-15',
@@ -38,6 +38,14 @@ export default defineNuxtConfig({
   vite: {
     ssr: {
       noExternal: ['vuetify'],
+    },
+  },
+  
+  nitro: {
+    esbuild: {
+      options: {
+        target: 'es2020',
+      },
     },
   },
 
