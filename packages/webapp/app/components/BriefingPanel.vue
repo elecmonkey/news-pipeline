@@ -179,7 +179,9 @@ function closeReference() {
 }
 
 .event-panels :deep(.v-expansion-panel-title) {
-  padding: 16px 20px;
+  padding-top: 12px;
+  padding-bottom: 8px;
+  padding-inline: 20px;
 }
 
 .event-title {
