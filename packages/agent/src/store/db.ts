@@ -23,13 +23,13 @@ export async function upsertArticles(
       create: {
         source: article.source,
         title: article.title,
-        content: article.summary || article.title,
+        content: article.content || article.summary || article.title,
         link: article.link,
         publishedAt: article.publishedAt ?? undefined,
       },
       update: {
         title: article.title,
-        content: article.summary || article.title,
+        content: article.content || article.summary || article.title,
         publishedAt: article.publishedAt ?? undefined,
       },
       select: {

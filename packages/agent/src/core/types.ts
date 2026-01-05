@@ -5,6 +5,7 @@ export type NormalizedArticle = {
   title: string;
   link: string;
   summary: string;
+  content?: string;
   publishedAt: Date | null;
   guid?: string;
   authors?: string[];

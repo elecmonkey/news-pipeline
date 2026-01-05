@@ -1,5 +1,6 @@
 import { prisma } from "@news-pipeline/database";
 import { dedupeByLink } from "./pipeline/dedupe";
+import { enrichArticles } from "./pipeline/enrich";
 import { ingestSources } from "./pipeline/ingest";
 import { createChatCompletion, loadOpenAIConfig } from "./llm/openai";
 import { eventsSystemPrompt, eventsUserPrompt } from "./llm/prompts/events";
@@ -27,12 +28,14 @@ async function main() {
   const windowed = filterByWindow(ingested, windowMinutes);
   const filtered = windowed.articles;
   const articles = dedupeByLink(filtered);
+  const contentConcurrency = Number(process.env.CONTENT_FETCH_CONCURRENCY ?? "4");
+  const enriched = await enrichArticles(articles, contentConcurrency);
   console.log(
     `[run] ingest done total=${ingested.length} window=${windowMinutes}m filtered=${filtered.length} unique=${articles.length}`
   );
 
   await prisma.$connect();
-  const storedArticles = await upsertArticles(prisma, articles);
+  const storedArticles = await upsertArticles(prisma, enriched);
   const storedByLink = new Map(storedArticles.map((item) => [item.link, item]));
   const generationRun = await prisma.generationRun.create({
     data: {
@@ -42,7 +45,7 @@ async function main() {
     select: { id: true },
   });
 
-  const withRefs = articles.map((article, index) => ({
+  const withRefs = enriched.map((article, index) => ({
     ...article,
     ref: `A${(index + 1).toString(36).toUpperCase().padStart(3, "0")}`,
   }));
@@ -52,7 +55,7 @@ async function main() {
     .map((article) =>
       [
         `[${article.ref}] ${article.title}`,
-        article.summary || article.title,
+        pickArticleContext(article),
         article.link,
       ].join("\n")
     )
@@ -88,7 +91,7 @@ async function main() {
       .map((article) =>
         [
           `Title: ${article.title}`,
-          `Summary: ${article.summary || article.title}`,
+          `Summary: ${pickArticleContext(article, 4000)}`,
           `Link: ${article.link}`,
         ].join("\n")
       )
@@ -167,6 +170,15 @@ function pickArticleOutput(article: NormalizedArticle & { ref: string }) {
     link: article.link,
     publishedAt: article.publishedAt?.toISOString() ?? null,
   };
+}
+
+function pickArticleContext(
+  article: NormalizedArticle,
+  maxLength = 1200
+): string {
+  const value = article.content || article.summary || article.title;
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength)}…`;
 }
 
 function parseEvents(raw: string): EventsResponse {
