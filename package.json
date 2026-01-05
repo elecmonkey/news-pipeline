@@ -13,5 +13,13 @@
   ],
   "author": "Elecmonkey <elecmonkey@hotmail.com> (https://www.elecmonkey.com)",
   "license": "MIT",
+  "scripts": {
+    "prepare": "pnpm -C packages/database build",
+    "dev": "pnpm -C packages/webapp dev",
+    "agent": "pnpm -C packages/agent dev",
+    "db:push": "pnpm -C packages/database db:push",
+    "db:studio": "pnpm -C packages/database db:studio",
+    "db:truncate": "pnpm -C packages/database db:truncate"
+  },
   "packageManager": "pnpm@10.27.0"
 }

@@ -11,15 +11,15 @@ Personal automated news aggregation and summarization pipeline with:
 - `packages/database` — Prisma schema + generated client.
 
 ## Prerequisites
-- Node.js (for pnpm + webapp tooling)
-- pnpm
-- Bun (for the agent)
+- Node.js (for webapp development and build)
+- pnpm (for monorepo and package management)
+- Bun (for running the agent)
 - PostgreSQL
 
 ## Setup
 1) Install dependencies:
    ```bash
-   pnpm install
+   pnpm i
    ```
 
 2) Create `.env` from the example and fill in values:
@@ -29,13 +29,12 @@ Personal automated news aggregation and summarization pipeline with:
 
 3) Initialize the database:
    ```bash
-   pnpm --filter @news-pipeline/database db:push
-   pnpm --filter @news-pipeline/database build
+   pnpm db:push
    ```
 
 ## Run the agent
 ```bash
-pnpm --filter @news-pipeline/agent dev
+pnpm agent
 ```
 
 The agent will:
@@ -46,26 +45,17 @@ The agent will:
 
 ## Run the webapp
 ```bash
-pnpm --filter @news-pipeline/webapp dev
+pnpm dev
 ```
 
 Open the local URL printed by Nuxt.
-
-## Deployment
-
-1) Build the database package before building the webapp:
-   ```bash
-   pnpm --filter @news-pipeline/database build
-   ```
-
-2) Deploy the Nuxt webapp using your preferred Nuxt hosting target.
 
 ## Scheduling the agent
 - This repo includes a `workflow_dispatch` workflow. You can trigger it from your own scheduler
   (or trigger locally with your scheduler of choice) to run the agent.
 - Recommended command:
   ```bash
-  bun packages/agent/src/index.ts
+  bun agent
   ```
 - Avoid using GitHub Actions scheduled workflows for this job due to unreliable timing delays.
 
