@@ -36,5 +36,6 @@ function mapItem(item: RssItem): NormalizedArticle | null {
 export const guardianSource: RssSource = {
   id: "guardian",
   url: "https://www.theguardian.com/world/rss",
+  supportsReadability: true,
   mapItem,
 };

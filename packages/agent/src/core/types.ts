@@ -18,5 +18,6 @@ export type RssItem = Record<string, unknown>;
 export type RssSource = {
   id: SourceId;
   url: string;
+  supportsReadability: boolean;
   mapItem: (item: RssItem) => NormalizedArticle | null;
 };

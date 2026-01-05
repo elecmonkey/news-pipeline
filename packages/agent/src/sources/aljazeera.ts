@@ -26,5 +26,6 @@ function mapItem(item: RssItem): NormalizedArticle | null {
 export const aljazeeraSource: RssSource = {
   id: "aljazeera",
   url: "https://www.aljazeera.com/xml/rss/all.xml",
+  supportsReadability: true,
   mapItem,
 };

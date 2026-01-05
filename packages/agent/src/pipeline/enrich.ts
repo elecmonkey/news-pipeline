@@ -1,10 +1,11 @@
-import type { NormalizedArticle } from "../core/types";
+import type { NormalizedArticle, RssSource } from "../core/types";
 import { fetchArticleText } from "../content/extract";
 
 const DEFAULT_CONCURRENCY = 4;
 
 export async function enrichArticles(
   articles: NormalizedArticle[],
+  sourceById: Map<NormalizedArticle["source"], RssSource>,
   concurrency = DEFAULT_CONCURRENCY
 ): Promise<NormalizedArticle[]> {
   if (!articles.length) return [];
@@ -20,9 +21,19 @@ export async function enrichArticles(
         if (index >= articles.length) break;
         const article = articles[index];
         const label = `${index + 1}/${articles.length} ${article.source} ${trimTitle(article.title)}`;
+        const source = sourceById.get(article.source);
+        const supportsReadability = source?.supportsReadability ?? true;
         if (article.content) {
           console.log(`[content] ${label} skipped (already has content)`);
           results[index] = article;
+          continue;
+        }
+        if (!supportsReadability) {
+          console.log(`[content] ${label} skipped (source=summary only)`);
+          results[index] = {
+            ...article,
+            content: article.summary || article.content,
+          };
           continue;
         }
         console.log(`[content] ${label} fetching`);

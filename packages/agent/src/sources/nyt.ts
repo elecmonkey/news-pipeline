@@ -32,5 +32,6 @@ function mapItem(item: RssItem): NormalizedArticle | null {
 export const nytSource: RssSource = {
   id: "nyt",
   url: "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+  supportsReadability: false,
   mapItem,
 };

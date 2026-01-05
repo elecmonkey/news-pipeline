@@ -2,6 +2,7 @@ import { prisma } from "@news-pipeline/database";
 import { dedupeByLink } from "./pipeline/dedupe";
 import { enrichArticles } from "./pipeline/enrich";
 import { ingestSources } from "./pipeline/ingest";
+import { sources } from "./sources";
 import { createChatCompletion, loadOpenAIConfig } from "./llm/openai";
 import { eventsSystemPrompt, eventsUserPrompt } from "./llm/prompts/events";
 import { buildSummarySystemPrompt, summaryUserPrompt } from "./llm/prompts/summary";
@@ -29,7 +30,8 @@ async function main() {
   const filtered = windowed.articles;
   const articles = dedupeByLink(filtered);
   const contentConcurrency = Number(process.env.CONTENT_FETCH_CONCURRENCY ?? "4");
-  const enriched = await enrichArticles(articles, contentConcurrency);
+  const sourceById = new Map(sources.map((source) => [source.id, source]));
+  const enriched = await enrichArticles(articles, sourceById, contentConcurrency);
   console.log(
     `[run] ingest done total=${ingested.length} window=${windowMinutes}m filtered=${filtered.length} unique=${articles.length}`
   );

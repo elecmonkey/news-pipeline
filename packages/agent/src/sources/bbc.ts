@@ -31,5 +31,6 @@ function mapItem(item: RssItem): NormalizedArticle | null {
 export const bbcSource: RssSource = {
   id: "bbc",
   url: "https://feeds.bbci.co.uk/news/world/rss.xml",
+  supportsReadability: true,
   mapItem,
 };
