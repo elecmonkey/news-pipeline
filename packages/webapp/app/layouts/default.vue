@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { onMounted } from "vue";
 import { useTheme } from "vuetify";
 
 const theme = useTheme();
-const isDark = computed(() => theme.global.current.value.dark);
 
 function setTheme(name: "light" | "dark") {
   theme.global.name.value = name;

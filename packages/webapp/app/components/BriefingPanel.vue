@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import { useRuntimeConfig } from "#imports";
 import type { EventReference, RunDetail } from "../types/news";
 
 type Props = {

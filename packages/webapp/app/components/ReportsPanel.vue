@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useRuntimeConfig } from "#imports";
 import type { RunListItem } from "../types/news";
 
 type Props = {
