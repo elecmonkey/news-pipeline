@@ -34,10 +34,14 @@ onMounted(() => {
 .app-root {
   background: var(--app-gradient);
   color: rgb(var(--v-theme-on-background));
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .main {
   padding-top: 24px;
   padding-bottom: 48px;
+  flex: 1;
 }
 </style>

@@ -46,7 +46,7 @@ function closeReference() {
   >
     <v-card-title class="headline-font panel-header">
       <div class="briefing-title">
-        Latest briefing
+        Briefing
       </div>
     </v-card-title>
     <v-divider />

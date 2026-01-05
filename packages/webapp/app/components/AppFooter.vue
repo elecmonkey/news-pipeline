@@ -36,6 +36,10 @@
 .app-footer {
   border-top: 1px solid rgba(var(--v-theme-on-background), 0.08);
   background: color-mix(in srgb, var(--app-surface) 85%, transparent);
+  height: 56px;
+  display: flex;
+  align-items: center;
+  flex: 0 0 56px;
 }
 
 .footer-content {
@@ -43,8 +47,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 0;
+  padding: 0;
   flex-wrap: nowrap;
+  height: 100%;
 }
 
 .footer-container {
