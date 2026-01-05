@@ -1,6 +1,6 @@
 # News Pipeline
 
-Automated news aggregation and summarization pipeline with:
+Personal automated news aggregation and summarization pipeline with:
 - An agent that ingests RSS, extracts article content, clusters events, and writes summaries.
 - A webapp that displays briefing runs, events, and source articles.
 - A Prisma/Postgres database for storage.
