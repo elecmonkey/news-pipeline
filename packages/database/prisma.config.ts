@@ -16,7 +16,4 @@ export default defineConfig({
   datasource: {
     url: databaseUrl,
   },
-  migrate: {
-    url: databaseUrl,
-  },
 });
