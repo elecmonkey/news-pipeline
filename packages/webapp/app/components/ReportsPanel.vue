@@ -19,6 +19,7 @@ const emit = defineEmits<{
   (event: "select", id: string): void;
   (event: "update:page", value: number): void;
   (event: "toggle-theme"): void;
+  (event: "refresh"): void;
 }>();
 
 function formatUtc(value: string) {
@@ -44,6 +45,18 @@ function selectRun(id: string) {
     <v-card-title class="headline-font panel-header d-flex align-center">
       Reports
       <v-spacer />
+      <v-btn
+        icon
+        variant="text"
+        density="compact"
+        size="small"
+        class="refresh-btn"
+        aria-label="Refresh reports"
+        :disabled="props.runsPending"
+        @click="emit('refresh')"
+      >
+        <v-icon icon="mdi-refresh" />
+      </v-btn>
       <v-btn
         icon
         variant="text"
@@ -133,6 +146,12 @@ function selectRun(id: string) {
 .theme-toggle {
   height: 32px;
   width: 32px;
+}
+
+.refresh-btn {
+  height: 32px;
+  width: 32px;
+  margin-right: 4px;
 }
 
 .report-card-text {

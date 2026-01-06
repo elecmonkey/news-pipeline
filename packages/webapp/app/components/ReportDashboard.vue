@@ -37,9 +37,9 @@ function toggleTheme() {
 const runsData = ref<RunListResponse | null>(null);
 const runsPending = ref(false);
 
-async function loadRuns() {
+async function loadRuns(force = false) {
   const cached = getList(page.value, pageSize);
-  if (cached) {
+  if (cached && !force) {
     runsData.value = cached;
     return;
   }
@@ -60,6 +60,10 @@ await loadRuns();
 watch(page, () => {
   void loadRuns();
 });
+
+function refreshRuns() {
+  void loadRuns(true);
+}
 
 watchEffect(() => {
   const runs = runsData.value?.runs ?? [];
@@ -140,6 +144,7 @@ function selectRun(id: string) {
           :total-pages="totalPages"
           :is-dark="isDark"
           @select="selectRun"
+          @refresh="refreshRuns"
           @update:page="page = $event"
           @toggle-theme="toggleTheme"
         />
