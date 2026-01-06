@@ -20,7 +20,7 @@ export async function enrichArticles(
         const index = cursor++;
         if (index >= articles.length) break;
         const article = articles[index];
-        const label = `${index + 1}/${articles.length} ${article.source} ${trimTitle(article.title)}`;
+        const label = `${index + 1}/${articles.length} ${article.source}`;
         const source = sourceById.get(article.source);
         const supportsReadability = source?.supportsReadability ?? true;
         if (article.content) {
@@ -54,7 +54,4 @@ export async function enrichArticles(
   return results;
 }
 
-function trimTitle(title: string, maxLength = 72): string {
-  if (title.length <= maxLength) return title;
-  return `${title.slice(0, maxLength)}…`;
-}
+
