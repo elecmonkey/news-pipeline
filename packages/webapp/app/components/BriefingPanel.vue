@@ -223,6 +223,12 @@ function closeReference() {
   white-space: pre-wrap;
 }
 
+.reference-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+}
+
 .reference-modal :deep(.v-card-title),
 .reference-modal :deep(.v-card-subtitle),
 .reference-modal :deep(.v-card-text),
@@ -233,15 +239,27 @@ function closeReference() {
 
 .reference-modal :deep(.v-card-title) {
   padding-top: 20px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
 }
 
 .reference-modal :deep(.v-card-text) {
-  padding-top: 16px;
-  padding-bottom: 16px;
+  padding-top: 0px;
+  padding-bottom: 0px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.reference-modal :deep(.v-card-subtitle) {
+  margin-bottom: 12px;
 }
 
 .reference-modal :deep(.v-card-actions) {
   padding-bottom: 20px;
+  flex: 0 0 auto;
+  margin-top: 12px;
 }
 
 @media (max-width: 960px) {
