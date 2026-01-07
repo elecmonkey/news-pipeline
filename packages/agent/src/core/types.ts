@@ -3,7 +3,6 @@ export type SourceId =
   | "bbc"
   | "nyt"
   | "guardian"
-  | "unNews"
   | "scmp";
 
 export type NormalizedArticle = {
