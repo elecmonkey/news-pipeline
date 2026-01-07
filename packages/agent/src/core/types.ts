@@ -3,7 +3,8 @@ export type SourceId =
   | "bbc"
   | "nyt"
   | "guardian"
-  | "scmp";
+  | "scmp"
+  | "france24";
 
 export type NormalizedArticle = {
   source: SourceId;
@@ -24,5 +25,9 @@ export type RssSource = {
   id: SourceId;
   url: string;
   supportsReadability: boolean;
+  readability?: {
+    useCustomHeaders?: boolean;
+    headers?: Record<string, string>;
+  };
   mapItem: (item: RssItem) => NormalizedArticle | null;
 };

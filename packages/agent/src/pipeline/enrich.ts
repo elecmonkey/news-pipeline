@@ -37,7 +37,11 @@ export async function enrichArticles(
           continue;
         }
         console.log(`[content] ${label} fetching`);
-        const extracted = await fetchArticleText(article.link);
+        const readability = source?.readability;
+        const useCustomHeaders = readability?.useCustomHeaders ?? false;
+        const extracted = await fetchArticleText(article.link, undefined, {
+          headers: useCustomHeaders ? readability?.headers : undefined,
+        });
         console.log(
           `[content] ${label} ${extracted?.text ? "ok" : "fallback"}`
         );
@@ -53,5 +57,3 @@ export async function enrichArticles(
   await Promise.all(workers);
   return results;
 }
-
-
