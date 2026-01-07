@@ -17,6 +17,7 @@
     "prepare": "pnpm -C packages/database build",
     "dev": "pnpm -C packages/webapp dev",
     "agent": "pnpm -C packages/agent dev",
+    "type-check": "pnpm -C packages/agent type-check && pnpm -C packages/database type-check && pnpm -C packages/webapp type-check",
     "db:push": "pnpm -C packages/database db:push",
     "db:studio": "pnpm -C packages/database db:studio",
     "db:truncate": "pnpm -C packages/database db:truncate"

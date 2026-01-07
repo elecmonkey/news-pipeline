@@ -7,7 +7,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "bun --env-file ../../.env src/index.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "type-check": "tsc -p tsconfig.json --noEmit"
   },
   "keywords": [
     "news-agent",

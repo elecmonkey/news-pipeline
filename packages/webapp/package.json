@@ -20,7 +20,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "prepare": "nuxt prepare",
-    "typecheck": "nuxt typecheck",
+    "type-check": "nuxt typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
