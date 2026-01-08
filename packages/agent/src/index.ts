@@ -23,6 +23,21 @@ async function main() {
   const config = loadOpenAIConfig();
   const localLanguage = process.env.LOCAL_LANGUAGE?.trim() || undefined;
   const summarySystemPrompt = buildSummarySystemPrompt(localLanguage);
+  await prisma.$connect();
+  const cutoff = new Date(Date.now() - 10 * 60 * 1000);
+  const recentRun = await prisma.generationRun.findFirst({
+    where: {
+      createdAt: { gte: cutoff },
+    },
+    select: { id: true, createdAt: true },
+  });
+  if (recentRun) {
+    console.log(
+      `[run] skipping: recent run ${recentRun.id} at ${recentRun.createdAt.toISOString()}`
+    );
+    await prisma.$disconnect();
+    return;
+  }
   console.log("[run] starting ingest");
   const ingested = await ingestSources();
   const windowMinutes = parseWindowMinutes(process.env.WINDOW_MINUTES);
@@ -36,7 +51,6 @@ async function main() {
     `[run] ingest done total=${ingested.length} window=${windowMinutes}m filtered=${filtered.length} unique=${articles.length}`
   );
 
-  await prisma.$connect();
   const storedArticles = await upsertArticles(prisma, enriched);
   const storedByLink = new Map(storedArticles.map((item) => [item.link, item]));
   const generationRun = await prisma.generationRun.create({
