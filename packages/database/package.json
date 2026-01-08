@@ -18,7 +18,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:truncate": "prisma db execute --file prisma/truncate.sql"
+    "db:truncate": "prisma db execute --file prisma/truncate.sql",
+    "db:delete-report": "tsx scripts/delete-report.ts"
   },
   "keywords": [
     "database",
@@ -39,6 +40,7 @@
     "dotenv": "^17.2.3",
     "@types/pg": "^8.16.0",
     "prisma": "^7.2.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "packageManager": "pnpm@10.27.0"
