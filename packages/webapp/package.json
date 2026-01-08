@@ -36,10 +36,10 @@
     "dotenv": "^17.2.3",
     "eslint": "^9.39.2",
     "eslint-plugin-vue": "^10.6.2",
-    "sass-embedded": "^1.97.1",
+    "sass-embedded": "^1.97.2",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.51.0",
-    "vue-tsc": "^3.2.1",
+    "typescript-eslint": "^8.52.0",
+    "vue-tsc": "^3.2.2",
     "vuetify-nuxt-module": "^0.19.2"
   }
 }
