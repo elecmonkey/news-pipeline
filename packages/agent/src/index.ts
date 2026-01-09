@@ -20,54 +20,64 @@ type EventsResponse = {
 };
 
 async function main() {
+  let stage = "init";
   const config = loadOpenAIConfig();
   const localLanguage = process.env.LOCAL_LANGUAGE?.trim() || undefined;
   const summarySystemPrompt = buildSummarySystemPrompt(localLanguage);
-  await prisma.$connect();
-  const cutoff = new Date(Date.now() - 10 * 60 * 1000);
-  const recentRun = await prisma.generationRun.findFirst({
-    where: {
-      createdAt: { gte: cutoff },
-    },
-    select: { id: true, createdAt: true },
-  });
-  if (recentRun) {
+  try {
+    stage = "db-connect";
+    await prisma.$connect();
+    const cutoff = new Date(Date.now() - 10 * 60 * 1000);
+    stage = "check-recent-run";
+    const recentRun = await prisma.generationRun.findFirst({
+      where: {
+        createdAt: { gte: cutoff },
+      },
+      select: { id: true, createdAt: true },
+    });
+    if (recentRun) {
+      console.log(
+        `[run] skipping: recent run ${recentRun.id} at ${recentRun.createdAt.toISOString()}`
+      );
+      await prisma.$disconnect();
+      return;
+    }
+    const windowMinutes = parseWindowMinutes(process.env.WINDOW_MINUTES);
+    const startedAt = new Date();
+    stage = "create-run";
+    const generationRun = await prisma.generationRun.create({
+      data: {
+        windowStart: new Date(startedAt.getTime() - windowMinutes * 60 * 1000),
+        windowEnd: startedAt,
+      },
+      select: { id: true },
+    });
+    console.log("[run] starting ingest");
+    stage = "ingest";
+    const ingested = await ingestSources();
+    const windowed = filterByWindow(ingested, windowMinutes);
+    const filtered = windowed.articles;
+    const articles = dedupeByLink(filtered);
+    const contentConcurrency = Number(process.env.CONTENT_FETCH_CONCURRENCY ?? "4");
+    const sourceById = new Map(sources.map((source) => [source.id, source]));
+    stage = "enrich";
+    const enriched = await enrichArticles(articles, sourceById, contentConcurrency);
     console.log(
-      `[run] skipping: recent run ${recentRun.id} at ${recentRun.createdAt.toISOString()}`
+      `[run] ingest done total=${ingested.length} window=${windowMinutes}m filtered=${filtered.length} unique=${articles.length}`
     );
-    await prisma.$disconnect();
-    return;
-  }
-  const windowMinutes = parseWindowMinutes(process.env.WINDOW_MINUTES);
-  const startedAt = new Date();
-  const generationRun = await prisma.generationRun.create({
-    data: {
-      windowStart: new Date(startedAt.getTime() - windowMinutes * 60 * 1000),
-      windowEnd: startedAt,
-    },
-    select: { id: true },
-  });
-  console.log("[run] starting ingest");
-  const ingested = await ingestSources();
-  const windowed = filterByWindow(ingested, windowMinutes);
-  const filtered = windowed.articles;
-  const articles = dedupeByLink(filtered);
-  const contentConcurrency = Number(process.env.CONTENT_FETCH_CONCURRENCY ?? "4");
-  const sourceById = new Map(sources.map((source) => [source.id, source]));
-  const enriched = await enrichArticles(articles, sourceById, contentConcurrency);
-  console.log(
-    `[run] ingest done total=${ingested.length} window=${windowMinutes}m filtered=${filtered.length} unique=${articles.length}`
-  );
 
-  const storedArticles = await upsertArticles(prisma, enriched);
-  const storedByLink = new Map(storedArticles.map((item) => [item.link, item]));
-  await prisma.generationRun.update({
-    where: { id: generationRun.id },
-    data: {
-      windowStart: new Date(windowed.windowStart),
-      windowEnd: new Date(windowed.windowEnd),
-    },
-  });
+    stage = "upsert-articles";
+    console.log(`[run] upserting articles count=${enriched.length}`);
+    const storedArticles = await upsertArticles(prisma, enriched);
+    const storedByLink = new Map(storedArticles.map((item) => [item.link, item]));
+    stage = "update-run-window";
+    await prisma.generationRun.update({
+      where: { id: generationRun.id },
+      data: {
+        windowStart: new Date(windowed.windowStart),
+        windowEnd: new Date(windowed.windowEnd),
+      },
+    });
 
   const withRefs = enriched.map((article, index) => ({
     ...article,
@@ -87,15 +97,20 @@ async function main() {
 
   console.log("[llm] requesting event grouping");
   const eventsStartedAt = Date.now();
-  const eventsRaw = await createChatCompletion(
-    {
-      system: eventsSystemPrompt,
-      user: `${eventsUserPrompt}\n\nArticles:\n${eventInput}`,
+  const events = await withRetry(
+    async () => {
+      const eventsRaw = await createChatCompletion(
+        {
+          system: eventsSystemPrompt,
+          user: `${eventsUserPrompt}\n\nArticles:\n${eventInput}`,
+        },
+        config
+      );
+      return parseEvents(eventsRaw);
     },
-    config
+    Number(process.env.LLM_PARSE_RETRIES ?? "1"),
+    "event-grouping"
   );
-
-  const events = parseEvents(eventsRaw);
   console.log(
     `[llm] event grouping done events=${events.events.length} ${Date.now() - eventsStartedAt}ms`
   );
@@ -121,12 +136,22 @@ async function main() {
       )
       .join("\n\n");
 
-    const summary = await createChatCompletion(
-      {
-        system: summarySystemPrompt,
-        user: `${summaryUserPrompt}\n\n${summaryInput}`,
+    const summary = await withRetry(
+      async () => {
+        const value = await createChatCompletion(
+          {
+            system: summarySystemPrompt,
+            user: `${summaryUserPrompt}\n\n${summaryInput}`,
+          },
+          config
+        );
+        if (!value.trim()) {
+          throw new Error("Empty summary response");
+        }
+        return value;
       },
-      config
+      Number(process.env.LLM_PARSE_RETRIES ?? "1"),
+      `summary ${event.event_key}`
     );
     console.log(
       `[llm] summary done ${event.event_key} ${Date.now() - summaryStartedAt}ms`
@@ -176,8 +201,13 @@ async function main() {
     index += 1;
   }
 
-  await prisma.$disconnect();
-  console.log(`[run] wrote ${output.length} events to database`);
+    await prisma.$disconnect();
+    console.log(`[run] wrote ${output.length} events to database`);
+  } catch (error) {
+    console.error(`[run] failed at stage=${stage}`, error);
+    await prisma.$disconnect();
+    throw error;
+  }
 }
 
 main().catch((error) => {
@@ -207,6 +237,27 @@ function pickSummaryContext(
   const value = article.content || article.summary || article.title;
   if (value.length <= maxLength) return value;
   return `${value.slice(0, maxLength)}…`;
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries: number,
+  label: string
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      if (attempt > 0) {
+        console.warn(`[llm] retry ${label} attempt=${attempt}/${retries}`);
+      }
+      return await fn();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`LLM failed: ${label}`);
 }
 
 function parseEvents(raw: string): EventsResponse {
