@@ -34,9 +34,5 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build database package
-        run: |
-          pnpm -C packages/database build
-
       - name: Run agent
         run: bun packages/agent/src/index.ts
