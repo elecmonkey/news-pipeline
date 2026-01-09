@@ -42,37 +42,40 @@ async function main() {
   try {
     stage = "db-connect";
     await prisma.$connect();
-    const cutoff = new Date(Date.now() - 10 * 60 * 1000);
-    stage = "check-run-lock";
-    const existingLock = await prisma.runLock.findUnique({
-      where: { id: lockId },
-      select: { startedAt: true },
-    });
-    if (existingLock && existingLock.startedAt >= cutoff) {
-      console.log(
-        `[run] skipping: recent start at ${existingLock.startedAt.toISOString()}`
-      );
-      await prisma.$disconnect();
-      return;
-    }
-    stage = "acquire-run-lock";
     const now = new Date();
+    const cutoff = new Date(now.getTime() - 10 * 60 * 1000);
+    stage = "acquire-run-lock";
+    let lockAcquired = false;
     try {
-      if (existingLock) {
-        await prisma.runLock.update({
-          where: { id: lockId },
-          data: { startedAt: now },
-        });
-      } else {
-        await prisma.runLock.create({
-          data: { id: lockId, startedAt: now },
-        });
-      }
+      await prisma.runLock.create({
+        data: { id: lockId, startedAt: now },
+      });
+      lockAcquired = true;
     } catch (error) {
-      console.warn("[run] lock contention, skipping", error);
+      const updated = await prisma.runLock.updateMany({
+        where: { id: lockId, startedAt: { lt: cutoff } },
+        data: { startedAt: now },
+      });
+      lockAcquired = updated.count === 1;
+      if (!lockAcquired) {
+        const existing = await prisma.runLock.findUnique({
+          where: { id: lockId },
+          select: { startedAt: true },
+        });
+        if (existing) {
+          console.log(
+            `[run] skipping: recent start at ${existing.startedAt.toISOString()}`
+          );
+        } else {
+          console.log("[run] skipping: lock contention");
+        }
+      }
+    }
+    if (!lockAcquired) {
       await prisma.$disconnect();
       return;
     }
+    console.log(`[run] lock acquired at ${now.toISOString()}`);
 
     const windowMinutes = parseWindowMinutes(process.env.WINDOW_MINUTES);
     console.log("[run] starting ingest");
@@ -202,6 +205,11 @@ async function main() {
       index += 1;
     }
 
+    if (preparedEvents.length === 0) {
+      console.warn("[run] no events produced; skipping database write");
+      await prisma.$disconnect();
+      return;
+    }
     stage = "db-write";
     const output: Array<{
       event_key: string;
@@ -250,18 +258,11 @@ async function main() {
       return run;
     });
 
-    stage = "release-run-lock";
-    await prisma.runLock.delete({ where: { id: lockId } });
     stage = "disconnect";
     await prisma.$disconnect();
     console.log(`[run] wrote ${output.length} events to database`);
   } catch (error) {
     console.error(`[run] failed at stage=${stage}`, error);
-    try {
-      await prisma.runLock.delete({ where: { id: lockId } });
-    } catch (cleanupError) {
-      console.warn("[run] failed to release lock", cleanupError);
-    }
     await prisma.$disconnect();
     throw error;
   }
