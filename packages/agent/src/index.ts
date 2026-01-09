@@ -217,7 +217,8 @@ async function main() {
       summary: string;
       articles: Array<ReturnType<typeof pickArticleOutput>>;
     }> = [];
-    await prisma.$transaction(async (tx: typeof prisma) => {
+    await prisma.$transaction(
+      async (tx: typeof prisma) => {
       const run = await tx.generationRun.create({
         data: {
           windowStart: new Date(windowed.windowStart),
@@ -256,7 +257,11 @@ async function main() {
       }
 
       return run;
-    });
+      },
+      {
+        timeout: Number(process.env.DB_TX_TIMEOUT_MS ?? "50000"),
+      }
+    );
 
     stage = "disconnect";
     await prisma.$disconnect();
