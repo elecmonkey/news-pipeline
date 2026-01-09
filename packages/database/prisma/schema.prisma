@@ -46,3 +46,8 @@ model EventArticleLink {
 
   @@id([eventId, articleId])
 }
+
+model RunLock {
+  id        String   @id @db.VarChar(32)
+  startedAt DateTime @default(now()) @db.Timestamptz(6)
+}

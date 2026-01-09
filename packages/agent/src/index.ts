@@ -24,34 +24,43 @@ async function main() {
   const config = loadOpenAIConfig();
   const localLanguage = process.env.LOCAL_LANGUAGE?.trim() || undefined;
   const summarySystemPrompt = buildSummarySystemPrompt(localLanguage);
+  const lockId = "agent";
   try {
     stage = "db-connect";
     await prisma.$connect();
     const cutoff = new Date(Date.now() - 10 * 60 * 1000);
-    stage = "check-recent-run";
-    const recentRun = await prisma.generationRun.findFirst({
-      where: {
-        createdAt: { gte: cutoff },
-      },
-      select: { id: true, createdAt: true },
+    stage = "check-run-lock";
+    const existingLock = await prisma.runLock.findUnique({
+      where: { id: lockId },
+      select: { startedAt: true },
     });
-    if (recentRun) {
+    if (existingLock && existingLock.startedAt >= cutoff) {
       console.log(
-        `[run] skipping: recent run ${recentRun.id} at ${recentRun.createdAt.toISOString()}`
+        `[run] skipping: recent start at ${existingLock.startedAt.toISOString()}`
       );
       await prisma.$disconnect();
       return;
     }
+    stage = "acquire-run-lock";
+    const now = new Date();
+    try {
+      if (existingLock) {
+        await prisma.runLock.update({
+          where: { id: lockId },
+          data: { startedAt: now },
+        });
+      } else {
+        await prisma.runLock.create({
+          data: { id: lockId, startedAt: now },
+        });
+      }
+    } catch (error) {
+      console.warn("[run] lock contention, skipping", error);
+      await prisma.$disconnect();
+      return;
+    }
+
     const windowMinutes = parseWindowMinutes(process.env.WINDOW_MINUTES);
-    const startedAt = new Date();
-    stage = "create-run";
-    const generationRun = await prisma.generationRun.create({
-      data: {
-        windowStart: new Date(startedAt.getTime() - windowMinutes * 60 * 1000),
-        windowEnd: startedAt,
-      },
-      select: { id: true },
-    });
     console.log("[run] starting ingest");
     stage = "ingest";
     const ingested = await ingestSources();
@@ -70,146 +79,157 @@ async function main() {
     console.log(`[run] upserting articles count=${enriched.length}`);
     const storedArticles = await upsertArticles(prisma, enriched);
     const storedByLink = new Map(storedArticles.map((item) => [item.link, item]));
-    stage = "update-run-window";
-    await prisma.generationRun.update({
-      where: { id: generationRun.id },
+    stage = "create-run";
+    const generationRun = await prisma.generationRun.create({
       data: {
         windowStart: new Date(windowed.windowStart),
         windowEnd: new Date(windowed.windowEnd),
       },
+      select: { id: true },
     });
 
-  const withRefs = enriched.map((article, index) => ({
-    ...article,
-    ref: `A${(index + 1).toString(36).toUpperCase().padStart(3, "0")}`,
-  }));
+    const withRefs = enriched.map((article, index) => ({
+      ...article,
+      ref: `A${(index + 1).toString(36).toUpperCase().padStart(3, "0")}`,
+    }));
 
-  console.log(`[run] building event input articles=${withRefs.length}`);
-  const eventInput = withRefs
-    .map((article) =>
-      [
-        `[${article.ref}] ${article.title}`,
-        pickGroupingContext(article),
-        article.link,
-      ].join("\n")
-    )
-    .join("\n\n");
-
-  console.log("[llm] requesting event grouping");
-  const eventsStartedAt = Date.now();
-  const events = await withRetry(
-    async () => {
-      const eventsRaw = await createChatCompletion(
-        {
-          system: eventsSystemPrompt,
-          user: `${eventsUserPrompt}\n\nArticles:\n${eventInput}`,
-        },
-        config
-      );
-      return parseEvents(eventsRaw);
-    },
-    Number(process.env.LLM_PARSE_RETRIES ?? "1"),
-    "event-grouping"
-  );
-  console.log(
-    `[llm] event grouping done events=${events.events.length} ${Date.now() - eventsStartedAt}ms`
-  );
-
-  const output = [];
-  let index = 1;
-  for (const event of events.events) {
-    const eventArticles = withRefs.filter((article) =>
-      event.article_refs.includes(article.ref)
-    );
-
-    console.log(
-      `[llm] summarizing ${index}/${events.events.length} ${event.event_key} refs=${eventArticles.length}`
-    );
-    const summaryStartedAt = Date.now();
-    const summaryInput = eventArticles
+    console.log(`[run] building event input articles=${withRefs.length}`);
+    stage = "llm-event-input";
+    const eventInput = withRefs
       .map((article) =>
         [
-          `Title: ${article.title}`,
-          `Summary: ${pickSummaryContext(article, 4000)}`,
-          `Link: ${article.link}`,
+          `[${article.ref}] ${article.title}`,
+          pickGroupingContext(article),
+          article.link,
         ].join("\n")
       )
       .join("\n\n");
 
-    const summary = await withRetry(
+    stage = "llm-events";
+    console.log("[llm] requesting event grouping");
+    const eventsStartedAt = Date.now();
+    const events = await withRetry(
       async () => {
-        const value = await createChatCompletion(
+        const eventsRaw = await createChatCompletion(
           {
-            system: summarySystemPrompt,
-            user: `${summaryUserPrompt}\n\n${summaryInput}`,
+            system: eventsSystemPrompt,
+            user: `${eventsUserPrompt}\n\nArticles:\n${eventInput}`,
           },
           config
         );
-        if (!value.trim()) {
-          throw new Error("Empty summary response");
-        }
-        return value;
+        return parseEvents(eventsRaw);
       },
       Number(process.env.LLM_PARSE_RETRIES ?? "1"),
-      `summary ${event.event_key}`
+      "event-grouping"
     );
     console.log(
-      `[llm] summary done ${event.event_key} ${Date.now() - summaryStartedAt}ms`
+      `[llm] event grouping done events=${events.events.length} ${Date.now() - eventsStartedAt}ms`
     );
 
-    const references = eventArticles.map((article) => ({
-      source: article.source,
-      title: article.title,
-      link: article.link,
-      publishedAt: article.publishedAt?.toISOString() ?? null,
-    }));
+    const output = [];
+    let index = 1;
+    for (const event of events.events) {
+      stage = `summary-${index}/${events.events.length}`;
+      const eventArticles = withRefs.filter((article) =>
+        event.article_refs.includes(article.ref)
+      );
 
-    const createdEvent = await prisma.event.create({
-      data: {
-        generationRunId: generationRun.id,
-        title: event.title,
-        summary,
-        references,
-      },
-      select: { id: true },
-    });
+      console.log(
+        `[llm] summarizing ${index}/${events.events.length} ${event.event_key} refs=${eventArticles.length}`
+      );
+      const summaryStartedAt = Date.now();
+      const summaryInput = eventArticles
+        .map((article) =>
+          [
+            `Title: ${article.title}`,
+            `Summary: ${pickSummaryContext(article, 4000)}`,
+            `Link: ${article.link}`,
+          ].join("\n")
+        )
+        .join("\n\n");
 
-    const linkRows = eventArticles
-      .map((article) => storedByLink.get(article.link))
-      .filter(
-        (item): item is { id: string; link: string; title: string; source: string } =>
-          Boolean(item)
-      )
-      .map((item) => ({
-        eventId: createdEvent.id,
-        articleId: item.id,
+      const summary = await withRetry(
+        async () => {
+          const value = await createChatCompletion(
+            {
+              system: summarySystemPrompt,
+              user: `${summaryUserPrompt}\n\n${summaryInput}`,
+            },
+            config
+          );
+          if (!value.trim()) {
+            throw new Error("Empty summary response");
+          }
+          return value;
+        },
+        Number(process.env.LLM_PARSE_RETRIES ?? "1"),
+        `summary ${event.event_key}`
+      );
+      console.log(
+        `[llm] summary done ${event.event_key} ${Date.now() - summaryStartedAt}ms`
+      );
+
+      const references = eventArticles.map((article) => ({
+        source: article.source,
+        title: article.title,
+        link: article.link,
+        publishedAt: article.publishedAt?.toISOString() ?? null,
       }));
 
-    if (linkRows.length) {
-      await prisma.eventArticleLink.createMany({
-        data: linkRows,
-        skipDuplicates: true,
+      stage = `db-event-${index}/${events.events.length}`;
+      const createdEvent = await prisma.event.create({
+        data: {
+          generationRunId: generationRun.id,
+          title: event.title,
+          summary,
+          references,
+        },
+        select: { id: true },
       });
+
+      const linkRows = eventArticles
+        .map((article) => storedByLink.get(article.link))
+        .filter(
+          (item): item is { id: string; link: string; title: string; source: string } =>
+            Boolean(item)
+        )
+        .map((item) => ({
+          eventId: createdEvent.id,
+          articleId: item.id,
+        }));
+
+      if (linkRows.length) {
+        await prisma.eventArticleLink.createMany({
+          data: linkRows,
+          skipDuplicates: true,
+        });
+      }
+
+      output.push({
+        event_key: event.event_key,
+        title: event.title,
+        summary,
+        articles: eventArticles.map(pickArticleOutput),
+      });
+      index += 1;
     }
 
-    output.push({
-      event_key: event.event_key,
-      title: event.title,
-      summary,
-      articles: eventArticles.map(pickArticleOutput),
-    });
-    index += 1;
-  }
-
+    stage = "release-run-lock";
+    await prisma.runLock.delete({ where: { id: lockId } });
+    stage = "disconnect";
     await prisma.$disconnect();
     console.log(`[run] wrote ${output.length} events to database`);
   } catch (error) {
     console.error(`[run] failed at stage=${stage}`, error);
+    try {
+      await prisma.runLock.delete({ where: { id: lockId } });
+    } catch (cleanupError) {
+      console.warn("[run] failed to release lock", cleanupError);
+    }
     await prisma.$disconnect();
     throw error;
   }
 }
-
 main().catch((error) => {
   // eslint-disable-next-line no-console
   console.error(error);
