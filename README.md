@@ -72,3 +72,9 @@ See `.env.example` for all options. Common ones:
 ## Notes
 - Sources declare whether Readability extraction is supported; e.g. NYT uses RSS summary fallback.
 - Source content is shown in a modal in the webapp with a link to the original article.
+
+## Contributing
+Issues and PRs are welcome. Please keep changes focused and include a clear description of the behavior change.
+
+## License
+MIT. See [LICENSE](./LICENSE).
