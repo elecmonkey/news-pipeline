@@ -10,6 +10,9 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: "News Pipeline",
+      link: [
+        { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      ],
     },
   },
   runtimeConfig: {
