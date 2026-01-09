@@ -38,9 +38,17 @@ async function main() {
     await prisma.$disconnect();
     return;
   }
+  const windowMinutes = parseWindowMinutes(process.env.WINDOW_MINUTES);
+  const startedAt = new Date();
+  const generationRun = await prisma.generationRun.create({
+    data: {
+      windowStart: new Date(startedAt.getTime() - windowMinutes * 60 * 1000),
+      windowEnd: startedAt,
+    },
+    select: { id: true },
+  });
   console.log("[run] starting ingest");
   const ingested = await ingestSources();
-  const windowMinutes = parseWindowMinutes(process.env.WINDOW_MINUTES);
   const windowed = filterByWindow(ingested, windowMinutes);
   const filtered = windowed.articles;
   const articles = dedupeByLink(filtered);
@@ -53,12 +61,12 @@ async function main() {
 
   const storedArticles = await upsertArticles(prisma, enriched);
   const storedByLink = new Map(storedArticles.map((item) => [item.link, item]));
-  const generationRun = await prisma.generationRun.create({
+  await prisma.generationRun.update({
+    where: { id: generationRun.id },
     data: {
       windowStart: new Date(windowed.windowStart),
       windowEnd: new Date(windowed.windowEnd),
     },
-    select: { id: true },
   });
 
   const withRefs = enriched.map((article, index) => ({
