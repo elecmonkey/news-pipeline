@@ -79,15 +79,6 @@ async function main() {
     console.log(`[run] upserting articles count=${enriched.length}`);
     const storedArticles = await upsertArticles(prisma, enriched);
     const storedByLink = new Map(storedArticles.map((item) => [item.link, item]));
-    stage = "create-run";
-    const generationRun = await prisma.generationRun.create({
-      data: {
-        windowStart: new Date(windowed.windowStart),
-        windowEnd: new Date(windowed.windowEnd),
-      },
-      select: { id: true },
-    });
-
     const withRefs = enriched.map((article, index) => ({
       ...article,
       ref: `A${(index + 1).toString(36).toUpperCase().padStart(3, "0")}`,
@@ -125,6 +116,15 @@ async function main() {
     console.log(
       `[llm] event grouping done events=${events.events.length} ${Date.now() - eventsStartedAt}ms`
     );
+
+    stage = "create-run";
+    const generationRun = await prisma.generationRun.create({
+      data: {
+        windowStart: new Date(windowed.windowStart),
+        windowEnd: new Date(windowed.windowEnd),
+      },
+      select: { id: true },
+    });
 
     const output = [];
     let index = 1;
