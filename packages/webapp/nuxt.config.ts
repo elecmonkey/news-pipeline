@@ -53,7 +53,53 @@ export default defineNuxtConfig({
   },
 
   css: [],
-  modules: ['vuetify-nuxt-module'],
+  modules: ['vuetify-nuxt-module', '@vite-pwa/nuxt'],
+
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      name: 'News Pipeline',
+      short_name: 'News',
+      description: 'Automated news aggregation and briefing reports.',
+      theme_color: '#0f172a',
+      background_color: '#f5f3ee',
+      display: 'standalone',
+      icons: [
+        {
+          src: '/favicon.svg',
+          sizes: 'any',
+          type: 'image/svg+xml',
+          purpose: 'any',
+        },
+        {
+          src: '/favicon.svg',
+          sizes: 'any',
+          type: 'image/svg+xml',
+          purpose: 'maskable',
+        },
+      ],
+    },
+    workbox: {
+      navigateFallback: '/',
+      runtimeCaching: [
+        {
+          urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
+          handler: 'NetworkFirst',
+          options: {
+            cacheName: 'api-cache',
+            networkTimeoutSeconds: 5,
+            expiration: {
+              maxEntries: 50,
+              maxAgeSeconds: 5 * 60,
+            },
+          },
+        },
+      ],
+    },
+    devOptions: {
+      enabled: false,
+    },
+  },
 
   vuetify: {
     moduleOptions: {
