@@ -19,7 +19,9 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:truncate": "prisma db execute --file prisma/truncate.sql",
-    "db:delete-report": "tsx scripts/delete-report.ts"
+    "db:delete-report": "tsx scripts/delete-report.ts",
+    "db:cleanup-orphan-events": "tsx scripts/cleanup-orphan-events.ts",
+    "db:cleanup-orphan-articles": "tsx scripts/cleanup-orphan-articles.ts"
   },
   "keywords": [
     "database",

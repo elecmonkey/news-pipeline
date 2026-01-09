@@ -59,6 +59,29 @@ Open the local URL printed by Nuxt.
   ```
 - Avoid using GitHub Actions scheduled workflows for this job due to unreliable timing delays.
 
+## Database maintenance
+- Do not run these commands while the agent is running.
+- Delete a report (generationRun + events + links):
+  ```bash
+  pnpm -C packages/database db:delete-report <runId>
+  ```
+- Dry-run orphan event cleanup (no deletion):
+  ```bash
+  pnpm -C packages/database db:cleanup-orphan-events
+  ```
+- Delete orphan events (requires confirmation):
+  ```bash
+  pnpm -C packages/database db:cleanup-orphan-events -- --confirm
+  ```
+- Dry-run orphan article cleanup (no deletion):
+  ```bash
+  pnpm -C packages/database db:cleanup-orphan-articles
+  ```
+- Delete orphan articles (requires confirmation):
+  ```bash
+  pnpm -C packages/database db:cleanup-orphan-articles -- --confirm
+  ```
+
 ## Environment variables
 See `.env.example` for all options. Common ones:
 - `DATABASE_URL` — Postgres connection string.
