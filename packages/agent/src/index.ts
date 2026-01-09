@@ -19,6 +19,20 @@ type EventsResponse = {
   events: EventGroup[];
 };
 
+type PreparedEvent = {
+  event_key: string;
+  title: string;
+  summary: string;
+  references: Array<{
+    source: string;
+    title: string;
+    link: string;
+    publishedAt: string | null;
+  }>;
+  articleIds: string[];
+  articles: Array<ReturnType<typeof pickArticleOutput>>;
+};
+
 async function main() {
   let stage = "init";
   const config = loadOpenAIConfig();
@@ -117,16 +131,8 @@ async function main() {
       `[llm] event grouping done events=${events.events.length} ${Date.now() - eventsStartedAt}ms`
     );
 
-    stage = "create-run";
-    const generationRun = await prisma.generationRun.create({
-      data: {
-        windowStart: new Date(windowed.windowStart),
-        windowEnd: new Date(windowed.windowEnd),
-      },
-      select: { id: true },
-    });
-
-    const output = [];
+    stage = "prepare-events";
+    const preparedEvents: PreparedEvent[] = [];
     let index = 1;
     for (const event of events.events) {
       stage = `summary-${index}/${events.events.length}`;
@@ -176,43 +182,73 @@ async function main() {
         publishedAt: article.publishedAt?.toISOString() ?? null,
       }));
 
-      stage = `db-event-${index}/${events.events.length}`;
-      const createdEvent = await prisma.event.create({
-        data: {
-          generationRunId: generationRun.id,
-          title: event.title,
-          summary,
-          references,
-        },
-        select: { id: true },
-      });
-
-      const linkRows = eventArticles
+      const articleIds = eventArticles
         .map((article) => storedByLink.get(article.link))
         .filter(
           (item): item is { id: string; link: string; title: string; source: string } =>
             Boolean(item)
         )
-        .map((item) => ({
-          eventId: createdEvent.id,
-          articleId: item.id,
-        }));
+        .map((item) => item.id);
 
-      if (linkRows.length) {
-        await prisma.eventArticleLink.createMany({
-          data: linkRows,
-          skipDuplicates: true,
-        });
-      }
-
-      output.push({
+      preparedEvents.push({
         event_key: event.event_key,
         title: event.title,
         summary,
+        references,
+        articleIds,
         articles: eventArticles.map(pickArticleOutput),
       });
+
       index += 1;
     }
+
+    stage = "db-write";
+    const output: Array<{
+      event_key: string;
+      title: string;
+      summary: string;
+      articles: Array<ReturnType<typeof pickArticleOutput>>;
+    }> = [];
+    await prisma.$transaction(async (tx: typeof prisma) => {
+      const run = await tx.generationRun.create({
+        data: {
+          windowStart: new Date(windowed.windowStart),
+          windowEnd: new Date(windowed.windowEnd),
+        },
+        select: { id: true },
+      });
+
+      for (const prepared of preparedEvents) {
+        const createdEvent = await tx.event.create({
+          data: {
+            generationRunId: run.id,
+            title: prepared.title,
+            summary: prepared.summary,
+            references: prepared.references,
+          },
+          select: { id: true },
+        });
+
+        if (prepared.articleIds.length) {
+          await tx.eventArticleLink.createMany({
+            data: prepared.articleIds.map((articleId) => ({
+              eventId: createdEvent.id,
+              articleId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        output.push({
+          event_key: prepared.event_key,
+          title: prepared.title,
+          summary: prepared.summary,
+          articles: prepared.articles,
+        });
+      }
+
+      return run;
+    });
 
     stage = "release-run-lock";
     await prisma.runLock.delete({ where: { id: lockId } });
