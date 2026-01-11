@@ -9,7 +9,7 @@ const router = useRouter();
 const route = useRoute();
 const { getList, setList, getDetail, setDetail } = useRunsCache();
 
-const page = ref(1);
+const page = useState<number>("report-dashboard-page", () => 1);
 const pageSize = 10;
 const activeRunId = ref<string | null>(null);
 const theme = useTheme();
