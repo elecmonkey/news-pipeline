@@ -43,6 +43,12 @@ The agent will:
 - Cluster and summarize events with the configured LLM.
 - Store runs, events, and articles in the database.
 
+## LLM Reliability
+The agent includes a robust retry mechanism for LLM calls:
+- **Automatic Retries**: Retries on network errors, 5xx server errors, and 429 rate limits.
+- **Backup Configuration**: If the primary LLM provider fails after all retries, the agent automatically switches to a backup provider if configured (via `OPENAI_*_BACKUP` env vars).
+- **Fast Fail**: 4xx client errors (e.g., invalid API key) fail immediately without retrying.
+
 ## Run the webapp
 ```bash
 pnpm dev
@@ -86,6 +92,8 @@ Open the local URL printed by Nuxt.
 See `.env.example` for all options. Common ones:
 - `DATABASE_URL` — Postgres connection string.
 - `OPENAI_BASE_URL` / `OPENAI_MODEL` / `OPENAI_API_KEY` — LLM provider settings.
+- `OPENAI_BASE_URL_BACKUP` / `OPENAI_MODEL_BACKUP` / `OPENAI_API_KEY_BACKUP` — Backup LLM provider settings (optional). Used when the primary provider fails after all retries.
+- `LLM_RETRIES` — Number of retries for LLM requests (default: 3).
 - `WINDOW_MINUTES` — ingest window size.
 - `LOCAL_LANGUAGE` — summarization language hint.
 - `DISPLAY_TZ` — UI time zone (IANA name) used for formatting.
