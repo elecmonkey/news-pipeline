@@ -1,3 +1,5 @@
+import retry from "async-retry";
+
 type OpenAIConfig = {
   baseUrl: string;
   apiKey: string;
@@ -20,7 +22,7 @@ export async function createChatCompletion(
   input: { system?: string; user: string },
   config: OpenAIConfig
 ): Promise<string> {
-  const maxRetries = Number(process.env.LLM_RETRIES ?? "2");
+  const maxRetries = Number(process.env.LLM_RETRIES ?? "3");
   const url = `${config.baseUrl}/chat/completions`;
   const body = JSON.stringify({
     model: config.model,
@@ -30,9 +32,8 @@ export async function createChatCompletion(
     ],
   });
 
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= maxRetries + 1; attempt += 1) {
-    try {
+  return retry(
+    async (bail) => {
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -44,7 +45,15 @@ export async function createChatCompletion(
 
       if (!response.ok) {
         const message = await response.text();
-        throw new Error(`OpenAI error ${response.status}: ${message}`);
+        const errorMsg = `OpenAI error ${response.status}: ${message}`;
+
+        // Stop retrying on client errors (except 429 Too Many Requests)
+        if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+          bail(new Error(errorMsg));
+          return "";
+        }
+
+        throw new Error(errorMsg);
       }
 
       const payload = (await response.json()) as {
@@ -52,22 +61,20 @@ export async function createChatCompletion(
       };
 
       return payload.choices?.[0]?.message?.content?.trim() || "";
-    } catch (error) {
-      lastError = error;
-      if (attempt <= maxRetries) {
-        const delayMs = 500 * attempt;
+    },
+    {
+      retries: maxRetries,
+      factor: 2,
+      minTimeout: 1000,
+      maxTimeout: 20000,
+      onRetry: (error, attempt) => {
+        const msg = error instanceof Error ? error.message : String(error);
         // eslint-disable-next-line no-console
         console.warn(
-          `[llm] request failed attempt=${attempt}/${maxRetries + 1}, retrying in ${delayMs}ms`,
-          error
+          `[llm] request failed attempt=${attempt}/${maxRetries}, retrying...`,
+          msg
         );
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-        continue;
-      }
+      },
     }
-  }
-
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("OpenAI request failed");
+  );
 }
