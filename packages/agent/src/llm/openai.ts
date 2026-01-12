@@ -18,11 +18,29 @@ export function loadOpenAIConfig(): OpenAIConfig {
   return { baseUrl, apiKey, model };
 }
 
-export async function createChatCompletion(
+function loadBackupConfig(primaryConfig: OpenAIConfig): OpenAIConfig | null {
+  const baseUrl = process.env.OPENAI_BASE_URL_BACKUP?.trim();
+  const apiKey = process.env.OPENAI_API_KEY_BACKUP?.trim();
+  const model = process.env.OPENAI_MODEL_BACKUP?.trim();
+
+  // If none of the backup variables are set, return null
+  if (!baseUrl && !apiKey && !model) {
+    return null;
+  }
+
+  // Fallback to primary config if backup variable is missing
+  return {
+    baseUrl: baseUrl || primaryConfig.baseUrl,
+    apiKey: apiKey || primaryConfig.apiKey,
+    model: model || primaryConfig.model,
+  };
+}
+
+async function executeRequest(
   input: { system?: string; user: string },
-  config: OpenAIConfig
+  config: OpenAIConfig,
+  maxRetries: number
 ): Promise<string> {
-  const maxRetries = Number(process.env.LLM_RETRIES ?? "3");
   const url = `${config.baseUrl}/chat/completions`;
   const body = JSON.stringify({
     model: config.model,
@@ -48,7 +66,11 @@ export async function createChatCompletion(
         const errorMsg = `OpenAI error ${response.status}: ${message}`;
 
         // Stop retrying on client errors (except 429 Too Many Requests)
-        if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        if (
+          response.status >= 400 &&
+          response.status < 500 &&
+          response.status !== 429
+        ) {
           bail(new Error(errorMsg));
           return "";
         }
@@ -77,4 +99,34 @@ export async function createChatCompletion(
       },
     }
   );
+}
+
+export async function createChatCompletion(
+  input: { system?: string; user: string },
+  config: OpenAIConfig
+): Promise<string> {
+  const maxRetries = Number(process.env.LLM_RETRIES ?? "3");
+
+  try {
+    return await executeRequest(input, config, maxRetries);
+  } catch (error) {
+    const backupConfig = loadBackupConfig(config);
+    if (backupConfig) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[llm] primary configuration failed exhausted all retries, switching to backup configuration...",
+        error
+      );
+      try {
+        return await executeRequest(input, backupConfig, maxRetries);
+      } catch (backupError) {
+        throw new Error(
+          `Backup configuration also failed: ${
+            backupError instanceof Error ? backupError.message : String(backupError)
+          }`
+        );
+      }
+    }
+    throw error;
+  }
 }
