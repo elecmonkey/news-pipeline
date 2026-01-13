@@ -61,29 +61,33 @@ export async function fetchArticleTextDebug(
       }
     });
     const dom = new JSDOM(html, { url, virtualConsole });
-    const reader = new Readability(dom.window.document);
-    const parsed = reader.parse();
-    if (!parsed?.textContent) {
-      if (debug) {
-        console.warn(`[readability] empty parsed text url=${url}`);
+    try {
+      const reader = new Readability(dom.window.document);
+      const parsed = reader.parse();
+      if (!parsed?.textContent) {
+        if (debug) {
+          console.warn(`[readability] empty parsed text url=${url}`);
+        }
+        return null;
       }
-      return null;
-    }
-    const text = normalizeText(parsed.textContent);
-    if (text.length < DEFAULT_MIN_TEXT) {
+      const text = normalizeText(parsed.textContent);
+      if (text.length < DEFAULT_MIN_TEXT) {
+        if (debug) {
+          console.warn(
+            `[readability] too short length=${text.length} url=${url}`
+          );
+        }
+        return null;
+      }
       if (debug) {
-        console.warn(
-          `[readability] too short length=${text.length} url=${url}`
+        console.log(
+          `[readability] ok length=${text.length} title=${parsed.title || ""}`
         );
       }
-      return null;
+      return { text, title: parsed.title || undefined };
+    } finally {
+      dom.window.close();
     }
-    if (debug) {
-      console.log(
-        `[readability] ok length=${text.length} title=${parsed.title || ""}`
-      );
-    }
-    return { text, title: parsed.title || undefined };
   } catch (error) {
     if ((error as { name?: string }).name === "AbortError") {
       if (debug) {

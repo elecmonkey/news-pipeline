@@ -62,7 +62,7 @@ async function main() {
   const windowed = filterByWindow(ingested, windowMinutes);
   const filtered = windowed.articles;
   const articles = dedupeByLink(filtered);
-  const contentConcurrency = Number(process.env.CONTENT_FETCH_CONCURRENCY ?? "4");
+  const contentConcurrency = Number(process.env.CONTENT_FETCH_CONCURRENCY ?? "2");
   const sourceById = new Map(sources.map((source) => [source.id, source]));
   const enriched = await enrichArticles(articles, sourceById, contentConcurrency);
   console.log(
@@ -113,77 +113,86 @@ async function main() {
   const output = [];
   let index = 1;
   for (const event of events.events) {
-    const eventArticles = withRefs.filter((article) =>
-      event.article_refs.includes(article.ref)
-    );
+    try {
+      const eventArticles = withRefs.filter((article) =>
+        event.article_refs.includes(article.ref)
+      );
 
-    console.log(
-      `[llm] summarizing ${index}/${events.events.length} ${event.event_key} refs=${eventArticles.length}`
-    );
-    const summaryStartedAt = Date.now();
-    const summaryInput = eventArticles
-      .map((article) =>
-        [
-          `Title: ${article.title}`,
-          `Summary: ${pickSummaryContext(article, 4000)}`,
-          `Link: ${article.link}`,
-        ].join("\n")
-      )
-      .join("\n\n");
+      console.log(
+        `[llm] summarizing ${index}/${events.events.length} ${event.event_key} refs=${eventArticles.length}`
+      );
+      const summaryStartedAt = Date.now();
+      const summaryInput = eventArticles
+        .map((article) =>
+          [
+            `Title: ${article.title}`,
+            `Summary: ${pickSummaryContext(article, 4000)}`,
+            `Link: ${article.link}`,
+          ].join("\n")
+        )
+        .join("\n\n");
 
-    const summary = await createChatCompletion(
-      {
-        system: summarySystemPrompt,
-        user: `${summaryUserPrompt}\n\n${summaryInput}`,
-      },
-      config
-    );
-    console.log(
-      `[llm] summary done ${event.event_key} ${Date.now() - summaryStartedAt}ms`
-    );
+      const summary = await createChatCompletion(
+        {
+          system: summarySystemPrompt,
+          user: `${summaryUserPrompt}\n\n${summaryInput}`,
+        },
+        config
+      );
+      console.log(
+        `[llm] summary done ${event.event_key} ${Date.now() - summaryStartedAt}ms`
+      );
 
-    const references = eventArticles.map((article) => ({
-      source: article.source,
-      title: article.title,
-      link: article.link,
-      publishedAt: article.publishedAt?.toISOString() ?? null,
-    }));
-
-    const createdEvent = await prisma.event.create({
-      data: {
-        generationRunId: generationRun.id,
-        title: event.title,
-        summary,
-        references,
-      },
-      select: { id: true },
-    });
-
-    const linkRows = eventArticles
-      .map((article) => storedByLink.get(article.link))
-      .filter(
-        (item): item is { id: string; link: string; title: string; source: string } =>
-          Boolean(item)
-      )
-      .map((item) => ({
-        eventId: createdEvent.id,
-        articleId: item.id,
+      const references = eventArticles.map((article) => ({
+        source: article.source,
+        title: article.title,
+        link: article.link,
+        publishedAt: article.publishedAt?.toISOString() ?? null,
       }));
 
-    if (linkRows.length) {
-      await prisma.eventArticleLink.createMany({
-        data: linkRows,
-        skipDuplicates: true,
+      const createdEvent = await prisma.event.create({
+        data: {
+          generationRunId: generationRun.id,
+          title: event.title,
+          summary,
+          references,
+        },
+        select: { id: true },
       });
-    }
 
-    output.push({
-      event_key: event.event_key,
-      title: event.title,
-      summary,
-      articles: eventArticles.map(pickArticleOutput),
-    });
-    index += 1;
+      const linkRows = eventArticles
+        .map((article) => storedByLink.get(article.link))
+        .filter(
+          (item): item is { id: string; link: string; title: string; source: string } =>
+            Boolean(item)
+        )
+        .map((item) => ({
+          eventId: createdEvent.id,
+          articleId: item.id,
+        }));
+
+      if (linkRows.length) {
+        await prisma.eventArticleLink.createMany({
+          data: linkRows,
+          skipDuplicates: true,
+        });
+      }
+
+      output.push({
+        event_key: event.event_key,
+        title: event.title,
+        summary,
+        articles: eventArticles.map(pickArticleOutput),
+      });
+    } catch (error) {
+      console.error(
+        `[run] failed to process event ${event.event_key} "${event.title}"`,
+        error
+      );
+      // Continue to next event instead of crashing entire run
+    } finally {
+      index += 1;
+    }
   }
 
   await prisma.$disconnect();
