@@ -95,6 +95,12 @@ async function main() {
     )
     .join("\n\n");
 
+  if (eventInput.trim().length === 0) {
+    console.log("[run] no articles to process, skipping LLM");
+    await prisma.$disconnect();
+    return;
+  }
+
   console.log("[llm] requesting event grouping");
   const eventsStartedAt = Date.now();
   const eventsRaw = await createChatCompletion(

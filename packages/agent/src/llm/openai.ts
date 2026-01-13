@@ -52,37 +52,45 @@ async function executeRequest(
 
   return retry(
     async (bail) => {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${config.apiKey}`,
-          "content-type": "application/json",
-        },
-        body,
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 120000); // 120s timeout per attempt
 
-      if (!response.ok) {
-        const message = await response.text();
-        const errorMsg = `OpenAI error ${response.status}: ${message}`;
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${config.apiKey}`,
+            "content-type": "application/json",
+          },
+          body,
+          signal: controller.signal,
+        });
 
-        // Stop retrying on client errors (except 429 Too Many Requests)
-        if (
-          response.status >= 400 &&
-          response.status < 500 &&
-          response.status !== 429
-        ) {
-          bail(new Error(errorMsg));
-          return "";
+        if (!response.ok) {
+          const message = await response.text();
+          const errorMsg = `OpenAI error ${response.status}: ${message}`;
+
+          // Stop retrying on client errors (except 429 Too Many Requests)
+          if (
+            response.status >= 400 &&
+            response.status < 500 &&
+            response.status !== 429
+          ) {
+            bail(new Error(errorMsg));
+            return "";
+          }
+
+          throw new Error(errorMsg);
         }
 
-        throw new Error(errorMsg);
+        const payload = (await response.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+
+        return payload.choices?.[0]?.message?.content?.trim() || "";
+      } finally {
+        clearTimeout(timeout);
       }
-
-      const payload = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-
-      return payload.choices?.[0]?.message?.content?.trim() || "";
     },
     {
       retries: maxRetries,
