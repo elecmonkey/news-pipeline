@@ -119,15 +119,17 @@ function selectRun(id: string) {
       </v-list>
     </v-card-text>
     <v-divider />
-    <v-card-actions class="justify-center">
-      <v-pagination
-        v-if="props.totalPages > 1"
-        :model-value="props.page"
-        :length="props.totalPages"
-        :total-visible="10"
-        density="compact"
-        @update:model-value="emit('update:page', $event)"
-      />
+    <v-card-actions class="pagination-actions">
+      <div class="pagination-scroll">
+        <v-pagination
+          v-if="props.totalPages > 1"
+          :model-value="props.page"
+          :length="props.totalPages"
+          :total-visible="10"
+          density="compact"
+          @update:model-value="emit('update:page', $event)"
+        />
+      </div>
     </v-card-actions>
   </v-card>
 </template>
@@ -170,5 +172,22 @@ function selectRun(id: string) {
 
 .report-list :deep(.v-list-item__prepend) {
   margin-inline-end: 4px;
+}
+
+.pagination-actions {
+  display: block;
+  padding-inline: 8px;
+}
+
+.pagination-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pagination-scroll :deep(.v-pagination) {
+  width: max-content;
+  margin-inline: auto;
 }
 </style>
