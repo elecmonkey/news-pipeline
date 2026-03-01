@@ -22,5 +22,5 @@
     "db:studio": "pnpm -C packages/database db:studio",
     "db:truncate": "pnpm -C packages/database db:truncate"
   },
-  "packageManager": "pnpm@10.27.0"
+  "packageManager": "pnpm@10.30.3"
 }
